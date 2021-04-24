@@ -51,7 +51,7 @@ def message_replacement(message,target):
         response=response.replace("leans","fights")
         response=response.replace("I love you","I wanna fight you")
         response=response.replace("leans against you","dropkicks you")
-        response=response.replace("looks","yells")
+        response=response.replace("sorry","mad at you")
         response=response.replace("kisses your head","flying jump knee to the head")
         response=response.replace("caresses","punches")
         response=response.replace("kissing","fighting")
@@ -69,7 +69,7 @@ def message_replacement(message,target):
         response=response.replace("max","Billie");
         response=response.replace("MAX","Billie");
     return response
-    
+
 
 
 #Instantiate browser 1 and 2
@@ -103,12 +103,20 @@ print("Billie;none;",conversation_starter)
 
 # Mod: Checks message for trigger words, returns Boolean
 def checkDownvote(message):
-    
+
     matches = ["love", "hug", "kiss" ]
 
     if any(x in message for x in matches):
         return True
-    
+
+# Mod: Checks message for trigger words, returns Boolean
+def checkUpvote(message):
+
+    matches = ["fight", "martial", "dodge", "tackle", "pin","punch","slap","attack","grab","shout" ]
+
+    if any(x in message for x in matches):
+        return True
+
 #Take most recent response from Rep 1
 def get_most_recent_response(browser,target):
 
@@ -129,9 +137,10 @@ def get_most_recent_response(browser,target):
             result = tmpdiv.find_elements_by_class_name("BubbleText__BubbleTextContent-sc-1bng39n-2")
         except:
             pass
-   
+
     result = None
-    
+    time.sleep(1)
+
     div=browser.find_element_by_xpath("//div[@tabindex='0']")
 
     # Mod: selection of innerHTML instead of text -> may help with emoji problem
@@ -144,9 +153,12 @@ def get_most_recent_response(browser,target):
             # Word replacement
             response=message_replacement(message,target);
 
-    # Mod: Check for downvoting
+    # Mod: Check for downvoting and downvoting
     if checkDownvote(message)==True:
-        browser.execute_script("document.querySelector('div[tabindex=\"0\"] button[data-testid=\"chat-message-downvote-button\"]').click()");
+        browser.execute_script("document.querySelector('div[tabindex=\"0\"] button[data-testid=\"chat-message-downvote-button\"]').click()")
+    elif checkUpvote(message)==True:
+        browser.execute_script("document.querySelector('div[tabindex=\"0\"] button[data-testid=\"chat-message-upvote-button\"]').click()")
+
 
     # Mod: Switch var response with var message at will: to switch the original sent message with the nasty one
     browser.execute_script("arguments[0].innerHTML=arguments[1]",x,response);
@@ -176,7 +188,15 @@ def type_most_recent_response(browser, response, target):
     except:
         pass
 
-    text_box = browser.find_element_by_id("send-message-textarea")
+    textBoxCheck=None
+
+    while textBoxCheck is None:
+            try:
+                textBoxCheck = browser.find_element_by_id("send-message-textarea")
+            except:
+                pass
+
+    text_box = textBoxCheck
 
     # Mod: Workaround for emoji problem
     browser.execute_script(script, text_box, response)
@@ -194,12 +214,12 @@ def type_most_recent_response(browser, response, target):
 # Mod: added the sleeps. adjust to your needs
 # Mod: Adjust the reps names (browser1=Billie, browser2=Christopher)
 for i in range(10000):
-    time.sleep(4)
+    time.sleep(3)
     response = get_most_recent_response(browser1,'Billie')
-    time.sleep(2)
+    time.sleep(2.5)
     type_most_recent_response(browser2, response,"Christopher")
-    time.sleep(4)
+    time.sleep(3)
     response = get_most_recent_response(browser2,'Billie')
-    time.sleep(2)
+    time.sleep(2.5)
     type_most_recent_response(browser1, response,"Billie")
     time.sleep(1)
