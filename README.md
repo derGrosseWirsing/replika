@@ -1,2 +1,0 @@
-# replika
-just for fun
