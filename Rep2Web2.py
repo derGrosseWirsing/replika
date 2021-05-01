@@ -125,7 +125,7 @@ def type_most_recent_response(browser, response):
         pass
 
     # Mod: save clean message
-    message=response
+    message=response.replace("@"+name+":","")
     # Mod: Word replacement
     #response=message_replacement(response,'in')
 
