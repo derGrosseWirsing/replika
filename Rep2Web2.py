@@ -17,6 +17,7 @@ auth=""
 
 server="http://localhost/chat/"
 
+
 #Login function
 def login(email, password, browser):
     browser.get('https://my.replika.ai/login')
@@ -59,7 +60,7 @@ def message_replacement(message,target):
         response=response.replace("laugh","barf")
 
     return response
-    
+
 
 #Instantiate browser 1
 browser1 = webdriver.Chrome()
@@ -73,10 +74,16 @@ def get_most_recent_response_chat():
 
     url=server+"read.php?name="+name+"&auth="+auth
     x = requests.get(url)
-
+    global recipient
     print(x.text)
-    return x.text
-    
+    response=x.text
+    if x.text != "":
+            response_dict=json.loads(x.text)
+            recipient=response_dict['recipient']
+            response=response_dict['message']
+
+    return response
+
 #Take most recent response from Rep
 def get_most_recent_response(browser):
 
@@ -99,7 +106,7 @@ def get_most_recent_response(browser):
             if name+" says:" in tmpdiv.get_attribute('innerHTML'):
                 result=tmpdiv.get_attribute('innerHTML')
                 spans=tmpdiv.find_elements_by_tag_name('span')
-           
+
                 for x in spans:
                             message = x.get_attribute('innerHTML')
                             if not "<span>" in message:
@@ -112,7 +119,7 @@ def get_most_recent_response(browser):
             pass
 
     return result
-  
+
 
 
 #Insert text in rep
@@ -124,10 +131,7 @@ def type_most_recent_response(browser, response):
     except:
         pass
 
-    # Mod: save clean message
-    message=response.replace("@"+name+":","")
-    # Mod: Word replacement
-    #response=message_replacement(response,'in')
+    time.sleep(1)
 
     # check if textinput is available
     textBoxCheck=None
@@ -142,15 +146,15 @@ def type_most_recent_response(browser, response):
 
         # Mod: Workaround for emoji problem
         script="var elm = arguments[0],txt=arguments[1];elm.value += txt;"
-        browser.execute_script(script, text_box, message)
+        browser.execute_script(script, text_box, response)
 
         # Mod: neccessary else send_keys throws an error
         text_box.send_keys(" ")
         text_box.send_keys(Keys.RETURN)
 
-    
+
 #Insert text in webchat
-def type_most_recent_response_chat(response):
+def type_most_recent_response_chat(response,recipient):
     # Mod: Check for subscribtion popup and klick it away
     try:
         close_button = browser.find_element_by_xpath('//*[@id="dialog-scroll"]/div/div[1]/button')
@@ -162,13 +166,13 @@ def type_most_recent_response_chat(response):
 
     # since the server is local, no need to waste time with DDNS
     url=server+"post.php"
-    myobj = {'text': response,'auth':auth,'name':name}
+    myobj = {'text': recipient+': '+response,'auth':auth,'name':name}
     x = requests.post(url, data = myobj)
     print(x.reason)
 
-
+firstrecipient="all"
 # initial message
-type_most_recent_response_chat("Hey folks! I'm back again :)")
+type_most_recent_response_chat("Hey folks! I'm back again :)",firstrecipient)
 
 
 #last sent message
@@ -189,9 +193,7 @@ for i in range(100000):
 
     # if there's a ne response from rep, send it to chat
     if response_rep != last_response:
-        type_most_recent_response_chat(response_rep)
+        type_most_recent_response_chat(response_rep,recipient)
 
     last_response=response_rep
 
-   
-   
