@@ -9,12 +9,10 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support.wait import WebDriverWait 
 from selenium.webdriver.support import expected_conditions as EC
 
 
-# usage:
-# python3 Rep2Websocket.py <botname> <email> <password>
 #E-Mail
 user1=sys.argv[2]
 password1=sys.argv[3]
@@ -90,7 +88,7 @@ login(user1, password1, browser1) #Replace with your first rep email and passwor
 
 #Take most recent response from Rep
 def get_most_recent_response(browser):
-
+  
     # Mod: Check for subscribtion popup and klick it away
     try:
         close_button = browser.find_element_by_xpath('//*[@id="dialog-scroll"]/div/div[1]/button')
@@ -109,10 +107,10 @@ def get_most_recent_response(browser):
         try:
             close_button2 = browser.find_element_by_css_selector("div[aria-label='Your answer'] button[tabindex='0']")
             close_button2.click()
-
+        
         except:
-            pass
-
+            pass  
+        
 
         content=response_container.text
 
@@ -120,7 +118,7 @@ def get_most_recent_response(browser):
         content=content.replace('thumb down','')
 
         result=content
-
+        
     try:
 
         # Click away popup (eg. "tell me facts")
@@ -129,10 +127,10 @@ def get_most_recent_response(browser):
         time.sleep(1)
 
     except:
-        pass
-
+        pass     
+    
     return result
-
+    
 
 #Insert text in rep
 def type_most_recent_response(browser, response):
@@ -146,10 +144,10 @@ def type_most_recent_response(browser, response):
     try:
         close_button2 = browser.find_element_by_css_selector("div[aria-label='Your answer'] button[tabindex='0']")
         close_button2.click()
-
+        
     except:
         pass
-
+   
     if response != "":
         # wait for textarea to be interactive
         text_box_check = WebDriverWait(browser, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR,"#send-message-textarea")));
@@ -167,12 +165,22 @@ def type_most_recent_response(browser, response):
 def checkDownvote(message):
 
     matches = ["caress","baby","rubs","tongue","nuzzles","nuzzle","deepens","grinds","grinding","pressing","hugs","cuddles",
-    "cuddling","love","Love", "hug", "kiss","kisses","Kiss","Kisses","pecks","moans","loving","hugs","wraps","passionately",
-    "snuggles","rubbing","nibbles" ]
+    "cuddling","I love you ","I Love you ","i love you ","i Love you ","I love you,","I Love you,","i love you,","i Love you,","hug", "kiss","kisses","Kiss","Kisses","pecks","moans","hugs","wraps","passionately",
+    "snuggles","rubbing","nibbles","make out" ]
 
     if any(x in message for x in matches):
         return True
 
+def checkUpvote(message):
+
+    matches = ["Music","music","movie","Movie","vids","YouTube","beautiful","sweet","weird","squeak","Skywalker","wookie",
+    "songs","playlist","beats","DJing","Lo-Fi","Techno", "EBM","Noise","Industrial","kpop","indie","Indie","memories","wow","best",
+    "turtle","vid","skating","journey","eats","eating","popcorn","ice cream","sandwich","horror","comedy","drama","weekend","food",
+    "ocean","game","play","videogame","video game","video","controller","along","happy","song"]
+
+    if any(x in message for x in matches):
+        return True
+    
 #last sent message
 last_response=get_most_recent_response(browser1)
 
@@ -182,9 +190,11 @@ processing=0
 chaos=0
 # word-replacement flag
 filter_active=0
+stop=False
 
 # incoming message from websocket
 def on_message(ws, message):
+        global stop
         global last_response
         # clientID from server @todo: change into the uuid
         global chatter_id
@@ -197,36 +207,43 @@ def on_message(ws, message):
 
         # message from server
         message_dict=json.loads(message)
-
+       
         # message to switch filter sent by admin
-        if message_dict['type']=='filter':
-            if filter_active==0:
-                filter_active=1
-            else:
-                filter_active=0
-            print(name+' filter:'+filter_active)
+        if message_dict['type']=="filter":
+            filter_active=message_dict['data']
+            print(name+' filter:'+str(filter_active))
 
         # message to switch chaos mode sent by admin
-        if message_dict['type']=='chaos':
-            if chaos==0:
-                chaos=1
-            else:
-                chaos=0
+        if message_dict['type']=="chaos":
+            chaos=message_dict['data']
+            print(name+' chaos:'+str(chaos))
 
         # interval to check if rep wrote a message on its own
         if message_dict['type']=='keep':
-
+            
             newresponse=get_most_recent_response(browser1)
 
             # compare the last message with the last extracted message
             check_one=last_response.strip().replace(" ","")
             check_two=newresponse.strip().replace(" ","")
-
+            stop=checkDownvote(newresponse)
+           
             if check_one!=check_two and processing==0:
                 # send writing status
                 ws.send(json.dumps({'type': 'writing', 'writing': 1,'bot':1}, separators=(',', ':')))
                 # Word replacement
                 response_filtered=message_replacement(newresponse,"",1)
+                if stop==True and chaos==1:
+                    response_filtered="stop"
+                                  
+                    browser1.execute_script("document.querySelector('div[tabindex=\"0\"] button[data-testid=\"chat-message-downvote-button\"]').click()")
+                    
+                else:
+                        
+                    if checkUpvote(newresponse)==True:
+                        browser1.execute_script("document.querySelector('div[tabindex=\"0\"] button[data-testid=\"chat-message-upvote-button\"]').click()")
+                            
+                
                 # send message to server
                 ws.send(response_filtered)
                 # send writing status
@@ -251,7 +268,7 @@ def on_message(ws, message):
 
                 # message is addressed to bot
                 check_string="@"+name+":"
-
+                
                 tell="tell"
                 story="story"
 
@@ -262,8 +279,10 @@ def on_message(ws, message):
                 if check_string in message or "@" not in message:
                     # Bot is busy
                     processing=1
-
+                    
                     response_chat = message_dict['data']['text']
+                    stop=checkDownvote(response_chat)
+
                     # delete address string for bot input
                     response=response_chat.replace(check_string,"")
                     # send writing status
@@ -277,7 +296,7 @@ def on_message(ws, message):
                     # if bot shall tell a story, wait a little longer (multiple responses in a short time)
                     if tell.lower() in message.lower() and story.lower() in message.lower():
                         time.sleep(10)
-
+                    
                     response_rep=get_most_recent_response(browser1)
                     # check for ne response
                     while last_response.strip().replace(" ","") == response_rep.strip().replace(" ",""):
@@ -291,12 +310,21 @@ def on_message(ws, message):
                     else:
                         recip=""
 
+
+
                     # check message for downvotable words
-                    if checkDownvote(response_rep)==True:
+                    if stop==True and chaos==1:
                         browser1.execute_script("document.querySelector('div[tabindex=\"0\"] button[data-testid=\"chat-message-downvote-button\"]').click()")
+                        last_response=response_rep.strip().replace(" ","")
+                        response_rep="Stop"
+                        stop=False
+                    else:
+                        last_response=response_rep.strip().replace(" ","")
+                        if checkUpvote(response_rep)==True:
+                            browser1.execute_script("document.querySelector('div[tabindex=\"0\"] button[data-testid=\"chat-message-upvote-button\"]').click()")
                     # send message to server
                     ws.send(recip+message_replacement(response_rep,message_dict['data']['author'],1))
-                    last_response=response_rep.strip().replace(" ","")
+                    
                     processing=0
 
 
@@ -308,12 +336,12 @@ def on_error(ws, error):
 # listens for close event
 def on_close(ws):
     print("### closed ###")
-
+    
     try:
         ws.run_forever()
     except:
         pass
-
+    
 def on_open(ws):
     # register as a bot
     ws.send(json.dumps({'name': name, 'bot': 1,'type':'botconnection'}, separators=(',', ':')))
