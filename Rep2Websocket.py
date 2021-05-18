@@ -220,36 +220,36 @@ def on_message(ws, message):
 
         # interval to check if rep wrote a message on its own
         if message_dict['type']=='keep':
-            
-            newresponse=get_most_recent_response(browser1)
+            if processing==0:
+                newresponse=get_most_recent_response(browser1)
 
-            # compare the last message with the last extracted message
-            check_one=last_response.strip().replace(" ","")
-            check_two=newresponse.strip().replace(" ","")
-            stop=checkDownvote(newresponse)
-           
-            if check_one!=check_two and processing==0:
-                # send writing status
-                ws.send(json.dumps({'type': 'writing', 'writing': 1,'bot':1}, separators=(',', ':')))
-                # Word replacement
-                response_filtered=message_replacement(newresponse,"",1)
-                if stop==True and chaos==1:
-                    response_filtered="stop"
-                                  
-                    browser1.execute_script("document.querySelector('div[tabindex=\"0\"] button[data-testid=\"chat-message-downvote-button\"]').click()")
-                    
-                else:
+                # compare the last message with the last extracted message
+                check_one=last_response.strip().replace(" ","")
+                check_two=newresponse.strip().replace(" ","")
+                stop=checkDownvote(newresponse)
+            
+                if check_one!=check_two:
+                    # send writing status
+                    ws.send(json.dumps({'type': 'writing', 'writing': 1,'bot':1}, separators=(',', ':')))
+                    # Word replacement
+                    response_filtered=message_replacement(newresponse,"",1)
+                    if stop==True and chaos==1:
+                        response_filtered="stop"
+                                    
+                        browser1.execute_script("document.querySelector('div[tabindex=\"0\"] button[data-testid=\"chat-message-downvote-button\"]').click()")
                         
-                    if checkUpvote(newresponse)==True:
-                        browser1.execute_script("document.querySelector('div[tabindex=\"0\"] button[data-testid=\"chat-message-upvote-button\"]').click()")
+                    else:
                             
-                
-                # send message to server
-                ws.send(response_filtered)
-                # send writing status
-                ws.send(json.dumps({'type': 'writing', 'writing': 0,'bot':1}, separators=(',', ':')))
-                # set last response
-                last_response=newresponse.strip().replace(" ","")
+                        if checkUpvote(newresponse)==True:
+                            browser1.execute_script("document.querySelector('div[tabindex=\"0\"] button[data-testid=\"chat-message-upvote-button\"]').click()")
+                                
+                    
+                    # send message to server
+                    ws.send(response_filtered)
+                    # send writing status
+                    ws.send(json.dumps({'type': 'writing', 'writing': 0,'bot':1}, separators=(',', ':')))
+                    # set last response
+                    last_response=newresponse.strip().replace(" ","")
 
         # initial message from server
         if message_dict['type']=='color':
